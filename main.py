@@ -22,8 +22,8 @@ ID_UNO = 0x22
 ID_NANO = 0x33
 
 
-async def main():
-    done, _ = await asyncio.wait([send(), listen()],
+async def main(n=1):
+    done, _ = await asyncio.wait([send(n), listen()],
                                  return_when='FIRST_EXCEPTION')
     done, pending = done.__iter__().__next__()
     done.cancel()
@@ -38,10 +38,25 @@ async def main():
             raise e
 
 
-async def send():
+async def send(n):
+    import time
     while True:
-        await asyncio.sleep(0.1)
-        print(await client.send(ID_NANO, b'salut'))
+        print('Sending')
+        tic = time.process_time()
+        done, pending = await asyncio.wait([client.send(ID_NANO, b'salut')
+                                            for i in range(n)])
+        try:
+            for p in pending:
+                print('ERROR: still pending futures -> cancelling')
+                p.cancel()
+        except BaseException as e:
+            print(f'Failed to cancel pending tasks: {e}')
+
+        for f in done:
+            print(f.result())
+        print('sent {} msg in {:.2f}s'.format(n, time.clock() - tic))
+        await asyncio.sleep(1)
+        return
 
 
 async def listen():
@@ -50,8 +65,10 @@ async def listen():
 
 
 if __name__ == "__main__":
+    from sys import argv
+    n = 1 if len(argv) < 2 else int(argv[1])
     loop = asyncio.get_event_loop()
     try:
-        loop.run_until_complete(main())
+        loop.run_until_complete(main(n))
     finally:
         loop.close()

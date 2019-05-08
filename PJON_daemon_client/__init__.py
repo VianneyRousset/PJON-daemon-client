@@ -12,8 +12,14 @@
  along with this program. If not, see <http://www.gnu.org/licenses/>.
 '''
 
-import protocol as proto
+import PJON_daemon_client.protocol as proto
 import asyncio
+
+__author__ = "Vianney Rousset"
+__license__ = "GPL3"
+__version__ = "1.0.0"
+__maintainer__ = "Vianney ROusset"
+__status__ = "Beta"
 
 
 class CommunicationError(Exception):
@@ -23,7 +29,8 @@ class CommunicationError(Exception):
 async def _connect(socket_path):
     reader, writer = await asyncio.open_unix_connection('\0' + socket_path)
     # checking protocol version
-    p = proto.read_packet(await reader.read(proto.PACKET_SIZE))
+    return reader, writer
+    p = proto.read_packet(await reader.readexactly(proto.PACKET_SIZE))
     if (not isinstance(p, proto.PacketVersion)):
         raise CommunicationError(f'Excepted {proto.PacketVersion} received '
                                  f'{type(p)}')
@@ -36,7 +43,7 @@ async def _connect(socket_path):
 async def listen(socket_path='/tmp/PJON.sock'):
     reader, _ = await _connect(socket_path)
     while True:
-        yield proto.read_packet(await reader.read(proto.PACKET_SIZE))
+        yield proto.read_packet(await reader.readexactly(proto.PACKET_SIZE))
 
 
 async def send(dest, data, socket_path='/tmp/PJON.sock'):

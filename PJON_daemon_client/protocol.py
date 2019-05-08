@@ -126,7 +126,8 @@ class PacketVersion(Packet):
         self.version = self._read_c_string(buf[calcsize(self._head_format):])
 
     def to_buffer(self):
-        buf = pack(self._packet_format, self.head.value, self.code)
+        buf = pack(self._packet_format, self.head.value)
+        buf += self.version.encode('ascii') + b'\0'
         return self._pad(buf)
 
     def __repr__(self):
@@ -217,7 +218,7 @@ class PacketIngoingMessage(Packet):
     def from_buffer(self, buf):
         super().from_buffer(buf)
         if (self.head is not Head.INGOING_MSG):
-            raise UnexpectedHeader(Head.ERROR, self.head)
+            raise UnexpectedHeader(Head.INGOING_MSG, self.head)
         fmt = self._packet_format
         _, self.src, length = unpack(fmt, buf[:calcsize(fmt)])
         buf = buf[calcsize(fmt):]
@@ -243,8 +244,8 @@ class PacketOutgoingMessage(Packet):
 
     def from_buffer(self, buf):
         super().from_buffer(buf)
-        if (self.head is not Head.INGOING_MSG):
-            raise UnexpectedHeader(Head.ERROR, self.head)
+        if (self.head is not Head.OUTGOING_MSG):
+            raise UnexpectedHeader(Head.OUTGOING_MSG, self.head)
         fmt = self._packet_format
         _, self.dest, length = unpack(fmt, buf[:calcsize(fmt)])
         buf = buf[calcsize(fmt):]
@@ -276,8 +277,8 @@ class PacketOutgoingResult(Packet):
         self.result = OutgoingResult(result)
 
     def to_buffer(self):
-        buf = pack(self._packet_format, self.result)
-        return self._pad(buf + self.data)
+        buf = pack(self._packet_format, self.head.value, self.result.value)
+        return self._pad(buf)
 
     def __repr__(self):
         return f'<{self.__class__.__module__}.{self.__class__.__name__} - ' \
